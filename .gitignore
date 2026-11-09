@@ -1,0 +1,7 @@
+.env
+__pycache__/
+faceprints.sqlite3
+faceprints.sqlite3-shm
+faceprints.sqlite3-wal
+models/*.task
+models/*.onnx

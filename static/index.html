@@ -1,0 +1,660 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#f5f7f6">
+  <title>Verity — Face verification</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --ink: #152522;
+      --muted: #687975;
+      --line: #e1e9e6;
+      --paper: #ffffff;
+      --canvas: #f4f7f5;
+      --green: #177d64;
+      --green-dark: #10654f;
+      --mint: #e4f4ed;
+      --amber: #c47b28;
+      --red: #be4f4b;
+      --shadow: 0 18px 55px rgba(29, 63, 52, .08);
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      color: var(--ink);
+      background:
+        radial-gradient(ellipse at 2% 0%, rgba(203, 237, 219, .44), transparent 33rem),
+        radial-gradient(ellipse at 100% 20%, rgba(219, 235, 231, .55), transparent 29rem),
+        var(--canvas);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      letter-spacing: -.01em;
+    }
+    button, input, textarea, select { font: inherit; }
+    button { cursor: pointer; }
+    .shell { max-width: 1160px; margin: 0 auto; padding: 26px 30px 54px; }
+    .topbar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 48px; }
+    .brand { display: flex; align-items: center; gap: 11px; font-size: 16px; font-weight: 750; letter-spacing: -.04em; }
+    .brand-mark { display: grid; width: 35px; height: 35px; place-items: center; border-radius: 12px; color: white; background: var(--green); box-shadow: 0 5px 12px #177d6438; }
+    .brand-mark svg { width: 21px; height: 21px; }
+    .local-badge { display: inline-flex; align-items: center; gap: 8px; border: 1px solid var(--line); padding: 8px 12px; border-radius: 999px; color: #52625e; background: rgba(255,255,255,.72); font-size: 12px; font-weight: 650; }
+    .local-dot { width: 7px; height: 7px; border-radius: 100%; background: #4ca783; box-shadow: 0 0 0 3px #4ca78320; }
+    .hero { max-width: 750px; margin: 0 0 30px 4px; }
+    .eyebrow { margin: 0 0 12px; color: var(--green); text-transform: uppercase; letter-spacing: .13em; font-size: 11px; font-weight: 800; }
+    h1 { margin: 0; font-size: clamp(34px, 5vw, 51px); line-height: 1.04; letter-spacing: -.055em; font-weight: 720; }
+    .hero-copy { max-width: 620px; margin: 16px 0 0; color: var(--muted); font-size: 15px; line-height: 1.65; }
+    .layout { display: grid; grid-template-columns: minmax(0, 1.45fr) minmax(305px, .78fr); align-items: start; gap: 20px; }
+    .card { border: 1px solid rgba(216, 229, 224, .9); border-radius: 20px; background: rgba(255,255,255,.94); box-shadow: var(--shadow); }
+    .main-card { padding: 26px; }
+    .side-card { padding: 23px; }
+    .card-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin-bottom: 23px; }
+    .card-heading h2 { margin: 0; font-size: 17px; letter-spacing: -.025em; }
+    .card-heading p { margin: 5px 0 0; color: var(--muted); font-size: 12px; line-height: 1.45; }
+    .step-mark { flex: 0 0 auto; display: grid; width: 30px; height: 30px; place-items: center; border-radius: 10px; background: var(--mint); color: var(--green); font-size: 12px; font-weight: 800; }
+    .field { margin-top: 20px; }
+    .field:first-of-type { margin-top: 0; }
+    .label-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+    label, .field-label { color: #263a35; font-size: 12px; font-weight: 720; }
+    .hint { color: #8a9994; font-size: 11px; }
+    .control { width: 100%; border: 1px solid var(--line); border-radius: 11px; outline: 0; color: var(--ink); background: #fbfcfb; transition: border .18s, box-shadow .18s, background .18s; }
+    .control:focus { border-color: #73b49b; background: white; box-shadow: 0 0 0 3px #177d6418; }
+    input.control, select.control { height: 43px; padding: 0 12px; }
+    textarea.control { min-height: 105px; resize: vertical; padding: 11px 12px; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 11px; line-height: 1.55; }
+    .upload-zone { position: relative; display: flex; min-height: 155px; align-items: center; justify-content: center; border: 1.5px dashed #cbd9d4; border-radius: 14px; background: linear-gradient(135deg, #fbfdfc, #f6faf8); transition: border .18s, background .18s, transform .18s; cursor: pointer; }
+    .upload-zone:hover, .upload-zone.dragging { border-color: #6cab91; background: #f0f8f4; }
+    .upload-zone input { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; }
+    .upload-content { max-width: 330px; padding: 18px; text-align: center; pointer-events: none; }
+    .upload-icon { display: grid; width: 39px; height: 39px; margin: 0 auto 10px; place-items: center; border-radius: 13px; color: var(--green); background: var(--mint); }
+    .upload-icon svg { width: 20px; height: 20px; }
+    .upload-title { margin: 0; font-size: 13px; font-weight: 730; }
+    .upload-note { margin: 5px 0 0; color: var(--muted); font-size: 11px; }
+    .file-row { display: none; align-items: center; gap: 11px; padding: 12px; border: 1px solid var(--line); border-radius: 12px; background: #fbfdfc; }
+    .file-icon { display: grid; flex: 0 0 auto; width: 36px; height: 36px; place-items: center; border-radius: 10px; background: #edf5f1; color: var(--green); }
+    .file-icon svg { width: 18px; }
+    .file-meta { min-width: 0; flex: 1; }
+    .file-name { overflow: hidden; margin: 0; text-overflow: ellipsis; white-space: nowrap; font-size: 12px; font-weight: 700; }
+    .file-size { margin: 4px 0 0; color: var(--muted); font-size: 10px; }
+    .capture-modes { display: flex; gap: 4px; padding: 4px; margin-bottom: 11px; border: 1px solid var(--line); border-radius: 11px; background: #f5f8f6; }
+    .mode-button { flex: 1; height: 34px; border: 0; border-radius: 8px; color: #72817c; background: transparent; font-size: 11px; font-weight: 700; }
+    .mode-button.active { color: #225b47; background: white; box-shadow: 0 1px 4px #1c40321b; }
+    .camera-panel { display: none; }
+    .camera-stage { position: relative; display: grid; min-height: 250px; overflow: hidden; place-items: center; border-radius: 14px; background: #182621; color: white; }
+    .camera-stage video { display: none; width: 100%; max-height: 390px; aspect-ratio: 16 / 10; object-fit: cover; transform: scaleX(-1); }
+    .camera-idle { max-width: 300px; padding: 24px; color: #c0cec8; text-align: center; }
+    .camera-idle svg { width: 33px; height: 33px; margin-bottom: 8px; color: #84c4a6; }
+    .camera-idle strong { display: block; margin-bottom: 5px; color: white; font-size: 13px; }
+    .camera-idle span { font-size: 11px; line-height: 1.5; }
+    .task-overlay { position: absolute; right: 14px; bottom: 14px; left: 14px; display: none; padding: 12px 14px; border: 1px solid #ffffff25; border-radius: 12px; background: #10221ddf; backdrop-filter: blur(12px); }
+    .task-kicker { display: flex; justify-content: space-between; gap: 12px; color: #a9c5b7; font-size: 9px; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; }
+    .task-title { margin: 6px 0 3px; font-size: 16px; font-weight: 750; letter-spacing: -.025em; }
+    .task-copy { margin: 0; color: #c4d2cb; font-size: 10px; }
+    .task-progress { height: 3px; margin-top: 10px; overflow: hidden; border-radius: 999px; background: #ffffff28; }
+    .task-progress span { display: block; width: 0; height: 100%; border-radius: inherit; background: #83d0a9; transition: width .2s linear; }
+    .camera-actions { display: flex; align-items: center; gap: 9px; margin-top: 11px; }
+    .secondary-button { display: inline-flex; min-height: 38px; align-items: center; justify-content: center; gap: 7px; padding: 0 12px; border: 1px solid var(--line); border-radius: 10px; color: #435650; background: white; font-size: 11px; font-weight: 700; }
+    .secondary-button:hover { border-color: #98c5ae; background: #f5faf7; }
+    .secondary-button svg { width: 15px; height: 15px; }
+    .secondary-button:disabled { cursor: wait; opacity: .6; }
+    .camera-status { margin: 0 0 0 auto; color: #82918c; font-size: 10px; }
+    .camera-ready { display: none; align-items: center; gap: 10px; margin-top: 10px; padding: 10px 12px; border: 1px solid #d4e9dd; border-radius: 11px; color: #34624f; background: #f1f9f4; font-size: 11px; }
+    .camera-ready svg { flex: 0 0 auto; width: 17px; height: 17px; }
+    .camera-ready span { flex: 1; }
+    [hidden] { display: none !important; }
+    .icon-button { display: grid; width: 30px; height: 30px; place-items: center; border: 0; border-radius: 9px; color: #72817c; background: transparent; }
+    .icon-button:hover { color: var(--red); background: #fff0ee; }
+    .icon-button svg { width: 16px; height: 16px; }
+    .privacy-note { display: flex; align-items: flex-start; gap: 8px; margin-top: 11px; color: #7a8984; font-size: 10px; line-height: 1.5; }
+    .privacy-note svg { flex: 0 0 auto; width: 14px; height: 14px; color: #669580; }
+    .server-key-note { display: flex; align-items: flex-start; gap: 8px; margin-top: 17px; padding: 11px 12px; border: 1px solid #e3eee8; border-radius: 11px; color: #60766c; background: #f5faf7; font-size: 10px; line-height: 1.5; }
+    .server-key-note svg { flex: 0 0 auto; width: 15px; height: 15px; color: #56846d; }
+    .workflow-switch { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; padding: 5px; margin-bottom: 22px; border: 1px solid var(--line); border-radius: 13px; background: #f5f8f6; }
+    .workflow-button { display: flex; min-height: 48px; align-items: center; justify-content: center; gap: 8px; border: 0; border-radius: 9px; color: #74827d; background: transparent; font-size: 12px; font-weight: 730; }
+    .workflow-button.active { color: #205c48; background: white; box-shadow: 0 1px 5px #1c40321b; }
+    .workflow-button svg { width: 16px; height: 16px; }
+    .mode-note { padding: 13px; border: 1px solid #e1eee7; border-radius: 12px; color: #587067; background: #f6faf7; font-size: 11px; line-height: 1.55; }
+    .mode-note strong { display: block; margin-bottom: 4px; color: #315c49; font-size: 11px; }
+    .primary-button { display: flex; width: 100%; height: 48px; align-items: center; justify-content: center; gap: 9px; margin-top: 22px; border: 0; border-radius: 12px; color: white; background: var(--green); box-shadow: 0 8px 16px #177d6424; font-size: 13px; font-weight: 750; transition: background .18s, transform .18s, box-shadow .18s; }
+    .primary-button:hover:not(:disabled) { transform: translateY(-1px); background: var(--green-dark); box-shadow: 0 10px 18px #177d6430; }
+    .primary-button:disabled { cursor: wait; opacity: .72; }
+    .primary-button svg { width: 17px; height: 17px; }
+    .spinner { display: none; width: 16px; height: 16px; border: 2px solid #ffffff66; border-top-color: white; border-radius: 50%; animation: spin .7s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .result { display: none; margin-top: 18px; overflow: hidden; border: 1px solid var(--line); border-radius: 14px; background: white; animation: rise .24s ease-out; }
+    @keyframes rise { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+    .result-head { display: flex; align-items: center; gap: 11px; padding: 15px 16px; border-bottom: 1px solid var(--line); }
+    .result-symbol { display: grid; flex: 0 0 auto; width: 34px; height: 34px; place-items: center; border-radius: 11px; }
+    .result-symbol svg { width: 18px; height: 18px; }
+    .result.success .result-symbol { color: var(--green); background: var(--mint); }
+    .result.failure .result-symbol { color: var(--red); background: #fff0ee; }
+    .result-head h3 { margin: 0; font-size: 13px; }
+    .result-head p { margin: 3px 0 0; color: var(--muted); font-size: 11px; }
+    .result-body { padding: 14px 16px 16px; }
+    .result-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 9px; }
+    .metric { padding: 10px; border-radius: 10px; background: #f6f9f7; }
+    .metric span { display: block; color: var(--muted); font-size: 10px; }
+    .metric strong { display: block; margin-top: 4px; font-size: 14px; }
+    .event-list { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 12px; }
+    .event-pill { padding: 5px 9px; border-radius: 999px; color: #366d59; background: #eaf5ef; font-size: 10px; font-weight: 700; }
+    .detail-error { margin: 0; color: #9c4845; font-size: 11px; line-height: 1.5; overflow-wrap: anywhere; }
+    .side-card .card-heading { margin-bottom: 19px; }
+    .side-card .field { margin-top: 17px; }
+    .token-count { font-size: 10px; color: #84928d; }
+    .token-count.valid { color: var(--green); font-weight: 700; }
+    .side-divider { height: 1px; margin: 20px 0; background: var(--line); }
+    .check-list { display: grid; gap: 13px; margin: 0; padding: 0; list-style: none; }
+    .check-list li { display: flex; gap: 10px; align-items: flex-start; color: #52625d; font-size: 11px; line-height: 1.45; }
+    .check { display: grid; flex: 0 0 auto; width: 19px; height: 19px; place-items: center; border: 1px solid #d8e8e0; border-radius: 7px; color: var(--green); background: #f0f8f4; }
+    .check svg { width: 11px; height: 11px; }
+    .side-foot { margin-top: 18px; padding: 12px; border-radius: 11px; color: #6a7a74; background: #f5f8f6; font-size: 10px; line-height: 1.55; }
+    .side-foot strong { color: #3d574d; }
+    .footer { display: flex; justify-content: space-between; gap: 16px; margin: 22px 4px 0; color: #87948f; font-size: 10px; }
+    .footer a { color: #60766c; text-decoration: none; }
+    .footer a:hover { text-decoration: underline; }
+    @media (max-width: 820px) { .layout { grid-template-columns: 1fr; } .topbar { margin-bottom: 36px; } }
+    @media (max-width: 520px) { .shell { padding: 19px 14px 35px; } .topbar { margin-bottom: 31px; } .main-card, .side-card { padding: 19px; border-radius: 16px; } .hero { margin-left: 1px; } .footer { flex-direction: column; } }
+  </style>
+</head>
+<body>
+  <main class="shell">
+    <header class="topbar">
+      <div class="brand">
+        <span class="brand-mark" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><path d="M12 3.5 19 6v5.3c0 4.4-2.8 7.7-7 9.2-4.2-1.5-7-4.8-7-9.2V6l7-2.5Z" stroke="currentColor" stroke-width="1.7"/><path d="m8.8 12 2.1 2.1 4.5-4.6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+        <span>verity<span style="color:#8fa39a;font-weight:500"> / studio</span></span>
+      </div>
+      <div class="local-badge"><span class="local-dot"></span> Local prototype</div>
+    </header>
+
+    <section class="hero">
+      <p class="eyebrow">Identity check · v0.1</p>
+      <h1>A little proof<br>you’re really you.</h1>
+      <p class="hero-copy">Create a trusted faceprint during onboarding, then confirm that same person with a guided face check during offboarding.</p>
+    </section>
+
+    <section class="layout" aria-label="Face verification form">
+      <form id="verify-form" class="card main-card">
+        <div class="workflow-switch" role="tablist" aria-label="Choose onboarding or offboarding">
+          <button id="onboarding-mode" class="workflow-button active" type="button" role="tab" aria-selected="true"><svg viewBox="0 0 24 24" fill="none"><path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>Onboarding</button>
+          <button id="offboarding-mode" class="workflow-button" type="button" role="tab" aria-selected="false"><svg viewBox="0 0 24 24" fill="none"><path d="M9 5H5v14h14v-4M14 5h5v5m0-5-9 9" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>Offboarding</button>
+        </div>
+        <div class="card-heading">
+          <div><h2 id="form-title">Set up onboarding</h2><p id="form-description">Capture a liveness clip to create this profile’s enrolled faceprint.</p></div>
+          <span class="step-mark">01</span>
+        </div>
+
+        <div class="field">
+          <div class="label-row"><label for="profile-id">Profile ID</label><span class="hint">Use the same ID at offboarding</span></div>
+          <input id="profile-id" name="profile_id" class="control" type="text" maxlength="100" autocomplete="off" placeholder="e.g. employee-1042" required>
+        </div>
+
+        <div class="field">
+          <div class="label-row"><label for="video" id="video-label">Onboarding video</label><span class="hint">MP4, MOV or WebM · up to 25 MB</span></div>
+          <div class="capture-modes" role="tablist" aria-label="Choose video source">
+            <button id="upload-mode" class="mode-button active" type="button" role="tab" aria-selected="true">Upload a clip</button>
+            <button id="camera-mode" class="mode-button" type="button" role="tab" aria-selected="false">Capture with camera</button>
+          </div>
+          <div id="upload-panel">
+          <div id="upload-zone" class="upload-zone">
+            <input id="video" name="video" type="file" accept="video/mp4,video/quicktime,video/webm,video/*" aria-label="Choose a verification video">
+            <div class="upload-content">
+              <span class="upload-icon"><svg viewBox="0 0 24 24" fill="none"><path d="M12 16V4m0 0L7.5 8.5M12 4l4.5 4.5M5 14.5v3A2.5 2.5 0 0 0 7.5 20h9a2.5 2.5 0 0 0 2.5-2.5v-3" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+              <p class="upload-title">Drop your video here, or browse</p>
+              <p class="upload-note">A clear, front-facing clip works best</p>
+            </div>
+          </div>
+          <div id="file-row" class="file-row">
+            <span class="file-icon"><svg viewBox="0 0 24 24" fill="none"><rect x="3.5" y="5" width="17" height="14" rx="3" stroke="currentColor" stroke-width="1.6"/><path d="m10 9 5 3-5 3V9Z" fill="currentColor"/></svg></span>
+            <div class="file-meta"><p id="file-name" class="file-name"></p><p id="file-size" class="file-size"></p></div>
+            <button id="remove-file" class="icon-button" type="button" aria-label="Remove video"><svg viewBox="0 0 24 24" fill="none"><path d="m7 7 10 10M17 7 7 17" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></button>
+          </div>
+          </div>
+          <div id="camera-panel" class="camera-panel">
+            <div class="camera-stage">
+              <video id="camera-preview" autoplay muted playsinline></video>
+              <div id="camera-idle" class="camera-idle">
+                <svg viewBox="0 0 24 24" fill="none"><rect x="3" y="6" width="13" height="12" rx="2.5" stroke="currentColor" stroke-width="1.6"/><path d="m16 10 5-3v10l-5-3v-4Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg>
+                <strong>Your camera preview will appear here</strong>
+                <span>Allow camera access when prompted. Your recording stays in this browser until you submit it.</span>
+              </div>
+              <div id="task-overlay" class="task-overlay" aria-live="polite">
+                <div class="task-kicker"><span id="task-step">Get ready</span><span id="task-time">2 sec</span></div>
+                <h3 id="task-title" class="task-title">Look at the camera</h3>
+                <p id="task-copy" class="task-copy">The guided challenge is about to begin.</p>
+                <div class="task-progress"><span id="task-progress-fill"></span></div>
+              </div>
+            </div>
+            <div class="camera-actions">
+              <button id="camera-enable" class="secondary-button" type="button"><svg viewBox="0 0 24 24" fill="none"><path d="M3 7.5A2.5 2.5 0 0 1 5.5 5h9A2.5 2.5 0 0 1 17 7.5v9a2.5 2.5 0 0 1-2.5 2.5h-9A2.5 2.5 0 0 1 3 16.5v-9ZM17 10l4-2.5v9L17 14" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg>Enable camera</button>
+              <button id="capture-start" class="secondary-button" type="button" disabled><svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="8" stroke="currentColor" stroke-width="1.7"/><circle cx="12" cy="12" r="3.5" fill="currentColor"/></svg>Start guided capture</button>
+              <button id="capture-cancel" class="secondary-button" type="button" hidden>Cancel</button>
+              <p id="camera-status" class="camera-status">Camera is off</p>
+            </div>
+            <div id="camera-ready" class="camera-ready"><svg viewBox="0 0 24 24" fill="none"><path d="m5 12.5 4.2 4.2L19 7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg><span id="camera-ready-text">Camera capture ready.</span><button id="capture-again" class="icon-button" type="button" aria-label="Record another video"><svg viewBox="0 0 24 24" fill="none"><path d="M20 11a8 8 0 0 0-14.8-3L3 11m0-5v5h5m-4 2a8 8 0 0 0 14.8 3L21 13m0 5v-5h-5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg></button></div>
+          </div>
+          <div class="privacy-note"><svg viewBox="0 0 24 24" fill="none"><rect x="5" y="10" width="14" height="11" rx="2" stroke="currentColor" stroke-width="1.6"/><path d="M8 10V7a4 4 0 1 1 8 0v3" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg><span>Your clip is held temporarily for analysis and removed when the request finishes.</span></div>
+        </div>
+
+        <div class="server-key-note"><svg viewBox="0 0 24 24" fill="none"><rect x="5" y="10" width="14" height="11" rx="2" stroke="currentColor" stroke-width="1.6"/><path d="M8 10V7a4 4 0 1 1 8 0v3" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg><span>Protected by the API key configured on this server. The key stays in the local <code>.env</code> file and is never shown in the browser.</span></div>
+
+        <button id="submit-button" class="primary-button" type="submit">
+          <span class="spinner" aria-hidden="true"></span>
+          <svg class="button-icon" viewBox="0 0 24 24" fill="none"><path d="M12 3.5 19 6v5.3c0 4.4-2.8 7.7-7 9.2-4.2-1.5-7-4.8-7-9.2V6l7-2.5Z" stroke="currentColor" stroke-width="1.6"/><path d="m8.8 12 2.1 2.1 4.5-4.6" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          <span class="button-label">Save onboarding faceprint</span>
+        </button>
+
+        <section id="result" class="result" aria-live="polite">
+          <div class="result-head"><span class="result-symbol" id="result-symbol"></span><div><h3 id="result-title"></h3><p id="result-subtitle"></p></div></div>
+          <div class="result-body" id="result-body"></div>
+        </section>
+      </form>
+
+      <aside class="card side-card">
+        <div class="card-heading">
+          <div><h2>Guided challenge</h2><p>Choose the actions shown during capture.</p></div>
+          <span class="step-mark">02</span>
+        </div>
+        <div class="field">
+          <div class="label-row"><label for="actions">Gesture sequence</label><span class="hint">Order matters</span></div>
+          <select id="actions" class="control">
+            <option value='["blink","smile"]'>Blink, then smile</option>
+            <option value='["smile","blink"]'>Smile, then blink</option>
+            <option value='["blink"]'>Blink</option>
+            <option value='["smile"]'>Smile</option>
+          </select>
+        </div>
+        <div id="mode-note" class="mode-note"><strong>Onboarding stores a baseline</strong>After the challenge passes, the averaged faceprint is saved locally under this Profile ID. The video itself is not stored.</div>
+        <div class="side-divider"></div>
+        <div class="label-row" style="margin-bottom:13px"><span class="field-label">What gets checked</span><span class="hint">in order</span></div>
+        <ul class="check-list">
+          <li><span class="check"><svg viewBox="0 0 16 16" fill="none"><path d="m3.5 8 3 3 6-6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></span><span>Live challenge actions and face presence</span></li>
+          <li><span class="check"><svg viewBox="0 0 16 16" fill="none"><path d="m3.5 8 3 3 6-6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></span><span>Photo clarity and face consistency across the clip</span></li>
+          <li><span class="check"><svg viewBox="0 0 16 16" fill="none"><path d="m3.5 8 3 3 6-6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></span><span id="final-check">Save this profile’s faceprint locally</span></li>
+        </ul>
+        <div class="side-foot"><strong>Local prototype:</strong> the browser sends the Profile ID, challenge, and video to this machine’s API at <span id="api-origin"></span>. The API key stays on the server.</div>
+      </aside>
+    </section>
+
+    <footer class="footer"><span>Verity Studio · Face verification prototype</span><span>Runs on your machine · <a href="/docs" target="_blank" rel="noreferrer">API docs</a></span></footer>
+  </main>
+
+  <script>
+    const MAX_BYTES = 25 * 1024 * 1024;
+    const fileInput = document.querySelector('#video');
+    const uploadZone = document.querySelector('#upload-zone');
+    const fileRow = document.querySelector('#file-row');
+    const uploadPanel = document.querySelector('#upload-panel');
+    const cameraPanel = document.querySelector('#camera-panel');
+    const cameraPreview = document.querySelector('#camera-preview');
+    const result = document.querySelector('#result');
+    const profileIdInput = document.querySelector('#profile-id');
+    const form = document.querySelector('#verify-form');
+    const submitButton = document.querySelector('#submit-button');
+    const actionsSelect = document.querySelector('#actions');
+    let workflowMode = 'onboarding';
+    let sourceMode = 'upload';
+    let cameraStream = null;
+    let capturedVideo = null;
+    let mediaRecorder = null;
+    let captureChunks = [];
+    let captureInterval = null;
+    let captureStartedAt = 0;
+    let captureCanceled = false;
+    const READY_SECONDS = 2;
+    const SECONDS_PER_TASK = 4;
+    document.querySelector('#api-origin').textContent = location.host;
+
+    function setWorkflowMode(mode) {
+      workflowMode = mode;
+      const onboarding = mode === 'onboarding';
+      document.querySelector('#onboarding-mode').classList.toggle('active', onboarding);
+      document.querySelector('#offboarding-mode').classList.toggle('active', !onboarding);
+      document.querySelector('#onboarding-mode').setAttribute('aria-selected', String(onboarding));
+      document.querySelector('#offboarding-mode').setAttribute('aria-selected', String(!onboarding));
+      document.querySelector('#form-title').textContent = onboarding ? 'Set up onboarding' : 'Confirm offboarding identity';
+      document.querySelector('#form-description').textContent = onboarding
+        ? 'Capture a liveness clip to create this profile’s enrolled faceprint.'
+        : 'Capture a fresh liveness clip and compare it with this profile’s onboarding faceprint.';
+      document.querySelector('#video-label').textContent = onboarding ? 'Onboarding video' : 'Offboarding video';
+      document.querySelector('.button-label').textContent = onboarding ? 'Save onboarding faceprint' : 'Verify against onboarding';
+      document.querySelector('#mode-note').innerHTML = onboarding
+        ? '<strong>Onboarding stores a baseline</strong>After the challenge passes, the averaged faceprint is saved locally under this Profile ID. The video itself is not stored.'
+        : '<strong>Offboarding checks the saved baseline</strong>Use the same Profile ID from onboarding. The new faceprint is compared with the locally stored onboarding record.';
+      document.querySelector('#final-check').textContent = onboarding
+        ? 'Save this profile’s faceprint locally'
+        : 'Match against the onboarding faceprint';
+      result.style.display = 'none';
+    }
+
+    document.querySelector('#onboarding-mode').addEventListener('click', () => setWorkflowMode('onboarding'));
+    document.querySelector('#offboarding-mode').addEventListener('click', () => setWorkflowMode('offboarding'));
+
+    const formatBytes = size => size >= 1024 * 1024 ? `${(size / 1024 / 1024).toFixed(2)} MB` : `${Math.max(1, Math.round(size / 1024))} KB`;
+
+    function setSourceMode(mode) {
+      sourceMode = mode;
+      const uploadSelected = mode === 'upload';
+      document.querySelector('#upload-mode').classList.toggle('active', uploadSelected);
+      document.querySelector('#camera-mode').classList.toggle('active', !uploadSelected);
+      document.querySelector('#upload-mode').setAttribute('aria-selected', String(uploadSelected));
+      document.querySelector('#camera-mode').setAttribute('aria-selected', String(!uploadSelected));
+      uploadPanel.style.display = uploadSelected ? 'block' : 'none';
+      cameraPanel.style.display = uploadSelected ? 'none' : 'block';
+      result.style.display = 'none';
+      if (uploadSelected) {
+        stopCamera();
+        capturedVideo = null;
+        actionsSelect.disabled = false;
+        document.querySelector('#camera-ready').style.display = 'none';
+        document.querySelector('#task-overlay').style.display = 'none';
+        document.querySelector('#camera-enable').style.display = 'inline-flex';
+        document.querySelector('#camera-status').textContent = 'Camera is off';
+      }
+    }
+
+    document.querySelector('#upload-mode').addEventListener('click', () => setSourceMode('upload'));
+    document.querySelector('#camera-mode').addEventListener('click', () => setSourceMode('camera'));
+
+    function setVideo(file) {
+      if (!file) return;
+      if (file.size > MAX_BYTES) {
+        fileInput.value = '';
+        showMessage('Video is over the 25 MB limit. Choose a smaller clip.', false);
+        return;
+      }
+      document.querySelector('#file-name').textContent = file.name;
+      document.querySelector('#file-size').textContent = `${(file.size / 1024 / 1024).toFixed(2)} MB · ready to upload`;
+      uploadZone.style.display = 'none';
+      fileRow.style.display = 'flex';
+      result.style.display = 'none';
+    }
+
+    function removeVideo() {
+      fileInput.value = '';
+      fileRow.style.display = 'none';
+      uploadZone.style.display = 'flex';
+    }
+
+    function stopCamera() {
+      if (cameraStream) cameraStream.getTracks().forEach(track => track.stop());
+      cameraStream = null;
+      cameraPreview.pause();
+      cameraPreview.srcObject = null;
+      cameraPreview.style.display = 'none';
+      document.querySelector('#camera-idle').style.display = 'block';
+      document.querySelector('#camera-enable').style.display = 'inline-flex';
+      document.querySelector('#capture-start').disabled = true;
+      if (document.querySelector('#camera-status').textContent !== 'Capture ready') {
+        document.querySelector('#camera-status').textContent = 'Camera is off';
+      }
+    }
+
+    async function enableCamera() {
+      if (!navigator.mediaDevices?.getUserMedia) {
+        showMessage('This browser does not support camera capture. Try a recent version of Chrome, Edge, or Safari.', false);
+        return;
+      }
+      const enableButton = document.querySelector('#camera-enable');
+      enableButton.disabled = true;
+      enableButton.textContent = 'Requesting camera…';
+      try {
+        cameraStream = await navigator.mediaDevices.getUserMedia({
+          audio: false,
+          video: { facingMode: 'user', width: { ideal: 640 }, height: { ideal: 480 } },
+        });
+        cameraPreview.srcObject = cameraStream;
+        cameraPreview.style.display = 'block';
+        document.querySelector('#camera-idle').style.display = 'none';
+        document.querySelector('#task-overlay').style.display = 'none';
+        document.querySelector('#camera-status').textContent = 'Camera is ready';
+        enableButton.style.display = 'none';
+        enableButton.disabled = false;
+        document.querySelector('#capture-start').disabled = false;
+        document.querySelector('#camera-ready').style.display = 'none';
+      } catch (error) {
+        const detail = error.name === 'NotAllowedError' ? 'Camera access was not allowed. Enable camera access for this page in your browser, then try again.' : 'Could not start the camera. Check that a camera is connected and not being used by another app.';
+        showMessage(detail, false);
+        enableButton.disabled = false;
+        enableButton.innerHTML = '<svg viewBox="0 0 24 24" fill="none"><path d="M3 7.5A2.5 2.5 0 0 1 5.5 5h9A2.5 2.5 0 0 1 17 7.5v9a2.5 2.5 0 0 1-2.5 2.5h-9A2.5 2.5 0 0 1 3 16.5v-9ZM17 10l4-2.5v9L17 14" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg>Enable camera';
+      }
+    }
+
+    document.querySelector('#camera-enable').addEventListener('click', enableCamera);
+    document.querySelector('#capture-again').addEventListener('click', () => {
+      capturedVideo = null;
+      actionsSelect.disabled = false;
+      document.querySelector('#camera-ready').style.display = 'none';
+      document.querySelector('#task-overlay').style.display = 'none';
+      enableCamera();
+    });
+
+    function actionPrompt(action) {
+      return action === 'blink'
+        ? ['Blink once, then open your eyes', 'Look at the lens and blink naturally.']
+        : ['Smile and hold it', 'Give the camera a clear smile for a moment.'];
+    }
+
+    function updateCapturePrompt(actions, elapsed) {
+      const overlay = document.querySelector('#task-overlay');
+      const step = document.querySelector('#task-step');
+      const title = document.querySelector('#task-title');
+      const copy = document.querySelector('#task-copy');
+      const time = document.querySelector('#task-time');
+      const fill = document.querySelector('#task-progress-fill');
+      overlay.style.display = 'block';
+      if (elapsed < READY_SECONDS) {
+        const remaining = Math.ceil(READY_SECONDS - elapsed);
+        step.textContent = 'Get ready'; time.textContent = `${remaining} sec`;
+        title.textContent = 'Look at the camera'; copy.textContent = 'Your guided challenge begins in a moment.';
+        fill.style.width = `${(elapsed / READY_SECONDS) * 100}%`;
+        return;
+      }
+      const taskElapsed = elapsed - READY_SECONDS;
+      const taskIndex = Math.min(actions.length - 1, Math.floor(taskElapsed / SECONDS_PER_TASK));
+      const taskProgress = (taskElapsed % SECONDS_PER_TASK) / SECONDS_PER_TASK;
+      const [taskTitle, taskCopy] = actionPrompt(actions[taskIndex]);
+      step.textContent = `Task ${taskIndex + 1} of ${actions.length}`;
+      time.textContent = `${Math.max(0, Math.ceil(SECONDS_PER_TASK - (taskElapsed % SECONDS_PER_TASK)))} sec`;
+      title.textContent = taskTitle; copy.textContent = taskCopy;
+      fill.style.width = `${taskProgress * 100}%`;
+    }
+
+    function finishCapture() {
+      if (captureInterval) clearInterval(captureInterval);
+      captureInterval = null;
+      if (mediaRecorder && mediaRecorder.state !== 'inactive') mediaRecorder.stop();
+    }
+
+    document.querySelector('#capture-start').addEventListener('click', () => {
+      if (!cameraStream) return;
+      if (!window.MediaRecorder) {
+        showMessage('This browser cannot record camera video. Try a recent version of Chrome or Edge.', false);
+        return;
+      }
+      let actions;
+      try { actions = JSON.parse(document.querySelector('#actions').value); }
+      catch (_) { showMessage('Choose a valid gesture sequence before starting.', false); return; }
+      captureChunks = [];
+      captureCanceled = false;
+      capturedVideo = null;
+      document.querySelector('#camera-ready').style.display = 'none';
+      const mimeType = ['video/webm;codecs=vp9', 'video/webm;codecs=vp8', 'video/webm'].find(type => MediaRecorder.isTypeSupported(type));
+      try {
+        mediaRecorder = new MediaRecorder(cameraStream, mimeType ? { mimeType } : undefined);
+      } catch (_) {
+        showMessage('Could not start video recording in this browser.', false);
+        return;
+      }
+      mediaRecorder.ondataavailable = event => { if (event.data?.size) captureChunks.push(event.data); };
+      mediaRecorder.onstop = () => {
+        stopCamera();
+        document.querySelector('#upload-mode').disabled = false;
+        document.querySelector('#camera-mode').disabled = false;
+        document.querySelector('#capture-cancel').hidden = true;
+        document.querySelector('#capture-start').disabled = true;
+        document.querySelector('#camera-enable').style.display = 'none';
+        if (captureCanceled) {
+          actionsSelect.disabled = false;
+          document.querySelector('#camera-status').textContent = 'Capture cancelled';
+          document.querySelector('#camera-enable').style.display = 'inline-flex';
+          return;
+        }
+        const blob = new Blob(captureChunks, { type: mediaRecorder.mimeType || 'video/webm' });
+        if (!blob.size || blob.size > MAX_BYTES) {
+          actionsSelect.disabled = false;
+          document.querySelector('#camera-status').textContent = 'Capture is too large';
+          document.querySelector('#camera-enable').style.display = 'inline-flex';
+          showMessage(blob.size > MAX_BYTES ? 'Camera recording exceeded the 25 MB limit. Try recording in a quieter or shorter setting.' : 'The camera did not produce a video. Please try again.', false);
+          return;
+        }
+        const extension = blob.type.includes('mp4') ? 'mp4' : 'webm';
+        capturedVideo = new File([blob], `verification-capture.${extension}`, { type: blob.type });
+        document.querySelector('#camera-ready-text').textContent = `Guided capture ready · ${formatBytes(blob.size)} · ${actions.length} challenge task${actions.length === 1 ? '' : 's'}`;
+        document.querySelector('#camera-ready').style.display = 'flex';
+        document.querySelector('#camera-status').textContent = 'Capture ready';
+        document.querySelector('#task-step').textContent = 'Complete';
+        document.querySelector('#task-time').textContent = 'Done';
+        document.querySelector('#task-title').textContent = 'Challenge recorded';
+        document.querySelector('#task-copy').textContent = 'Your clip is ready to verify.';
+        document.querySelector('#task-progress-fill').style.width = '100%';
+        document.querySelector('#task-overlay').style.display = 'block';
+      };
+      mediaRecorder.start(250);
+      const totalSeconds = READY_SECONDS + actions.length * SECONDS_PER_TASK;
+      captureStartedAt = performance.now();
+      document.querySelector('#camera-status').textContent = 'Recording challenge';
+      document.querySelector('#capture-start').disabled = true;
+      document.querySelector('#capture-cancel').hidden = false;
+      document.querySelector('#upload-mode').disabled = true;
+      document.querySelector('#camera-mode').disabled = true;
+      actionsSelect.disabled = true;
+      updateCapturePrompt(actions, 0);
+      captureInterval = setInterval(() => {
+        const elapsed = (performance.now() - captureStartedAt) / 1000;
+        if (elapsed >= totalSeconds) { finishCapture(); return; }
+        updateCapturePrompt(actions, elapsed);
+      }, 100);
+      result.style.display = 'none';
+    });
+
+    document.querySelector('#capture-cancel').addEventListener('click', () => {
+      captureCanceled = true;
+      document.querySelector('#upload-mode').disabled = false;
+      document.querySelector('#camera-mode').disabled = false;
+      actionsSelect.disabled = false;
+      finishCapture();
+    });
+
+    fileInput.addEventListener('change', () => setVideo(fileInput.files[0]));
+    document.querySelector('#remove-file').addEventListener('click', removeVideo);
+    uploadZone.addEventListener('dragover', event => { event.preventDefault(); uploadZone.classList.add('dragging'); });
+    uploadZone.addEventListener('dragleave', () => uploadZone.classList.remove('dragging'));
+    uploadZone.addEventListener('drop', event => {
+      event.preventDefault();
+      uploadZone.classList.remove('dragging');
+      const file = event.dataTransfer.files[0];
+      if (!file) return;
+      const transfer = new DataTransfer(); transfer.items.add(file); fileInput.files = transfer.files; setVideo(file);
+    });
+
+    function showMessage(message, success, payload) {
+      result.className = `result ${success ? 'success' : 'failure'}`;
+      result.style.display = 'block';
+      document.querySelector('#result-symbol').innerHTML = success
+        ? '<svg viewBox="0 0 24 24" fill="none"><path d="m5 12.5 4.2 4.2L19 7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>'
+        : '<svg viewBox="0 0 24 24" fill="none"><path d="M12 8v5m0 3.5h.01M10.2 4.8 2.9 17.4A1.8 1.8 0 0 0 4.5 20h15a1.8 1.8 0 0 0 1.6-2.6L13.8 4.8a2.1 2.1 0 0 0-3.6 0Z" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>';
+      document.querySelector('#result-title').textContent = success
+        ? (workflowMode === 'onboarding' ? 'Onboarding saved' : 'Identity verified')
+        : (payload?.reason ? reasonTitle(payload.reason) : 'Could not verify');
+      document.querySelector('#result-subtitle').textContent = success
+        ? (workflowMode === 'onboarding' ? 'The faceprint is saved locally for this Profile ID.' : 'The offboarding face matched the onboarding record.')
+        : message;
+      const body = document.querySelector('#result-body');
+      body.replaceChildren();
+      if (!payload) {
+        const p = document.createElement('p'); p.className = 'detail-error'; p.textContent = message; body.append(p); return;
+      }
+      const metrics = [];
+      if (payload.analysis) {
+        metrics.push(['Frames analyzed', payload.analysis.frame_count ?? '—']);
+        metrics.push(['Photos retained', payload.analysis.selected_frames?.length ?? '—']);
+      }
+      if (payload.faceprints?.enrolled_similarity != null) metrics.push(['Faceprint match', `${(payload.faceprints.enrolled_similarity * 100).toFixed(1)}%`]);
+      if (payload.faceprints?.pairwise_similarities?.length) {
+        const minimum = Math.min(...payload.faceprints.pairwise_similarities);
+        metrics.push(['Within-clip match', `${(minimum * 100).toFixed(1)}%`]);
+      }
+      if (metrics.length) {
+        const grid = document.createElement('div'); grid.className = 'result-grid';
+        for (const [label, value] of metrics) { const item = document.createElement('div'); item.className = 'metric'; const title = document.createElement('span'); title.textContent = label; const strong = document.createElement('strong'); strong.textContent = value; item.append(title, strong); grid.append(item); }
+        body.append(grid);
+      }
+      if (payload.detected_events?.length) {
+        const events = document.createElement('div'); events.className = 'event-list';
+        for (const event of payload.detected_events) { const pill = document.createElement('span'); pill.className = 'event-pill'; pill.textContent = `${event.action} · ${Number(event.timestamp_seconds).toFixed(1)}s`; events.append(pill); }
+        body.append(events);
+      }
+      if (!success && message && !payload.reason) { const p = document.createElement('p'); p.className = 'detail-error'; p.style.marginTop = '10px'; p.textContent = message; body.append(p); }
+    }
+
+    function reasonTitle(reason) {
+      return ({ bad_video: 'Video could not be read', no_face: 'Face not visible enough', multiple_faces: 'More than one face detected', challenge_not_done: 'Challenge not completed', low_quality: 'Video quality is too low', not_same_person: 'Faces do not match each other', not_matched: 'Faceprint did not match', profile_not_found: 'No onboarding record found', already_enrolled: 'Profile ID already enrolled' })[reason] || 'Could not verify';
+    }
+
+    function reasonMessage(reason, detail) {
+      if (detail) return detail;
+      return ({
+        profile_not_found: 'Complete onboarding with this Profile ID before offboarding.',
+        already_enrolled: 'This Profile ID already has an onboarding faceprint. Choose a different Profile ID.',
+        not_matched: 'This capture did not match the faceprint saved during onboarding.',
+        not_same_person: 'The selected photos in this clip do not consistently show the same person.',
+        challenge_not_done: 'The requested gestures were not detected in the right order.',
+        low_quality: 'Use a brighter, sharper clip with your face closer to the camera.',
+      })[reason] || reason || 'The verification request could not be completed.';
+    }
+
+    form.addEventListener('submit', async event => {
+      event.preventDefault();
+      const file = sourceMode === 'camera' ? capturedVideo : fileInput.files[0];
+      const profileId = profileIdInput.value.trim();
+      if (!profileId) { showMessage('Enter the Profile ID for this onboarding or offboarding capture.', false); profileIdInput.focus(); return; }
+      if (!file) { showMessage(sourceMode === 'camera' ? 'Enable your camera and complete the guided capture first.' : 'Choose a video to continue.', false); return; }
+      if (file.size > MAX_BYTES) { showMessage('Video is over the 25 MB limit.', false); return; }
+      const data = new FormData();
+      data.append('profile_id', profileId);
+      data.append('actions', document.querySelector('#actions').value);
+      data.append('video', file);
+      submitButton.disabled = true;
+      submitButton.querySelector('.spinner').style.display = 'block';
+      submitButton.querySelector('.button-icon').style.display = 'none';
+      submitButton.querySelector('.button-label').textContent = 'Analyzing video…';
+      result.style.display = 'none';
+      document.querySelector('#upload-mode').disabled = true;
+      document.querySelector('#camera-mode').disabled = true;
+      document.querySelector('#onboarding-mode').disabled = true;
+      document.querySelector('#offboarding-mode').disabled = true;
+      try {
+        const endpoint = workflowMode === 'onboarding' ? '/ui/enroll' : '/ui/offboard';
+        const response = await fetch(endpoint, { method: 'POST', body: data });
+        const payload = await response.json().catch(() => ({}));
+        const ok = response.ok && payload.status === (workflowMode === 'onboarding' ? 'enrolled' : 'verified');
+        const message = reasonMessage(payload.reason, payload.detail) || payload.message || `Request failed (${response.status})`;
+        showMessage(message, ok, payload);
+      } catch (error) {
+        showMessage('Could not reach the local API. Make sure the server is running, then try again.', false);
+      } finally {
+        submitButton.disabled = false;
+        submitButton.querySelector('.spinner').style.display = 'none';
+        submitButton.querySelector('.button-icon').style.display = 'block';
+        submitButton.querySelector('.button-label').textContent = workflowMode === 'onboarding'
+          ? 'Save onboarding faceprint'
+          : 'Verify against onboarding';
+        document.querySelector('#upload-mode').disabled = false;
+        document.querySelector('#camera-mode').disabled = false;
+        document.querySelector('#onboarding-mode').disabled = false;
+        document.querySelector('#offboarding-mode').disabled = false;
+      }
+    });
+  </script>
+</body>
+</html>
